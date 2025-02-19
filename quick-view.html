@@ -1,0 +1,668 @@
+<!--
+    Author: 6c75
+    Description: Forum post viewer for constelia.ai forums
+    Version: 1.0.0
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>constelia.ai - quick view</title>
+    <style>
+        html {
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --secondary: #38bdf8;
+            --text: #e2e8f0;
+            --text-2: #94a3b8;
+            --border: #334155;
+            --accent: #f472b6;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            color: var(--text);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        button.refresh-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2rem;
+            padding: 0.75rem 2.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            min-width: 120px;
+            cursor: pointer;
+            transition: .2s;
+            position: relative;
+        }
+
+        button.refresh-button:hover:not(:disabled) {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button.refresh-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .spinner {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spinButton 0.6s linear infinite;
+        }
+
+        .loading .spinner { display: block; }
+        .loading .text { opacity: 0; }
+        @keyframes spinButton {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .post {
+            padding: 1.5rem;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.03);
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+            transition: .2s;
+        }
+
+        .post:hover {
+            border-color: var(--primary);
+            background: rgba(255,255,255,0.05);
+        }
+
+        .post-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            align-items: center;
+        }
+
+        .post-title {
+            color: var(--secondary);
+            font-weight: 600;
+            text-decoration: none;
+            font-size: 1.1rem;
+        }
+
+        .post-title:hover {
+            color: var(--primary);
+        }
+
+        .post-author {
+            color: var(--accent);
+            font-size: 0.875rem;
+        }
+
+        .elapsed {
+            font-size: 0.75rem;
+            color: var(--text-2);
+            margin-bottom: 1rem;
+        }
+
+        .info-text {
+            color: var(--text-2);
+            font-size: 0.875rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        pre {
+            background: #1a1a1a;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            max-height: 400px;
+            margin: 1rem 0;
+            white-space: pre;
+            font-size: 0.9rem;
+        }
+
+        code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #e2e8f0;
+            display: block;
+            line-height: 1.5;
+        }
+
+        blockquote {
+            border-left: 3px solid var(--primary);
+            margin: 1rem 0;
+            padding: 1rem;
+            background: rgba(139,92,246,0.1);
+            border-radius: 0 8px 8px 0;
+        }
+
+        a {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.7);
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.3s ease-out;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        .popup.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.3s ease-out;
+        }
+
+        .popup-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .popup-title {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+        }
+
+        .popup-content {
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+            color: var(--text-2);
+        }
+
+        .key-format {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            color: var(--text);
+            display: inline-block;
+            margin: 0.5rem 0;
+            border: 1px solid var(--border);
+        }
+
+        .popup-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            min-width: 120px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .popup-button .button-text {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: 600;
+            letter-spacing: 0.025em;
+        }
+
+        .popup-button .countdown {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--primary-hover);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .popup-button.counting .countdown {
+            transform: translateY(0);
+        }
+
+        .popup-button.counting .button-text {
+            visibility: hidden;
+        }
+
+        .popup-button .refresh-icon {
+            display: none;
+        }
+
+        .popup-button.refreshing .button-text {
+            visibility: hidden;
+        }
+
+        .popup-button.refreshing .refresh-icon {
+            display: block;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .bb-quote {
+            border-left: 3px solid var(--primary);
+            margin: 1rem 0;
+            padding: 1rem 1.5rem;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+            color: var(--text-2);
+        }
+
+        .inline-code {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 0.2em 0.4em;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--accent);
+        }
+
+        .code-block {
+            font-family: 'Consolas', 'Monaco', monospace;
+            color: #e2e8f0;
+            display: block;
+            line-height: 1.5;
+            tab-size: 4;
+        }
+
+        .image-container {
+            margin: 1rem 0;
+            max-width: 100%;
+            display: block;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .attachment-link {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 4px;
+            color: var(--accent);
+            text-decoration: none;
+            margin: 0.5rem 0;
+            transition: 0.2s;
+        }
+
+        .attachment-link:hover {
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--primary);
+        }
+
+        .user-mention {
+            color: var(--accent);
+            text-decoration: none;
+            font-weight: 500;
+            transition: .2s;
+        }
+
+        .user-mention:hover {
+            color: var(--primary);
+            text-decoration: underline;
+        }
+
+        .bb-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1rem 0;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .bb-table td {
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>constelia.ai - quick view</h1>
+        <button class="refresh-button" onclick="fetchPosts()">
+            <div class="spinner"></div>
+            <span class="text">Refresh</span>
+        </button>
+        <div id="postsInfo" class="info-text"></div>
+        <div id="posts"></div>
+    </div>
+    <div class="popup-overlay"></div>
+    <div class="popup">
+        <h2 class="popup-title">API Key Not Found</h2>
+        <div class="popup-content">
+            Please create a key.txt file in the same directory as this HTML file with your API key in this format:
+            <div class="key-format">ABCD-EFGH-IJKL-MNOP</div>
+        </div>
+        <button class="popup-button" onclick="startCountdown()">
+            <span class="button-text">Refresh</span>
+            <div class="countdown"></div>
+            <svg class="refresh-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <path d="M16 12a4 4 0 11-4-4"></path>
+            </svg>
+        </button>
+    </div>
+    <script>
+        const REFRESH_COOLDOWN = 10000;
+        let lastRefreshTime = 0;
+
+        function showPopup() {
+            document.querySelector('.popup-overlay').classList.add('show');
+            document.querySelector('.popup').classList.add('show');
+        }
+
+        function closePopup() {
+            document.querySelector('.popup-overlay').classList.remove('show');
+            document.querySelector('.popup').classList.remove('show');
+        }
+
+        async function getApiKey() {
+            try {
+                const response = await fetch('key.txt');
+                if (!response.ok) throw new Error('key.txt not found');
+                
+                const key = await response.text();
+                const keyFormat = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+                
+                if (!keyFormat.test(key.trim())) {
+                    throw new Error('Invalid key format');
+                }
+                
+                return key.trim();
+            } catch (error) {
+                showPopup();
+                return null;
+            }
+        }
+
+        async function fetchPosts() {
+            const btn = document.querySelector('.refresh-button');
+            if (btn.disabled) return;
+            
+            const now = Date.now();
+            const timeElapsed = now - lastRefreshTime;
+            
+            if (timeElapsed < REFRESH_COOLDOWN) {
+                const remainingTime = Math.ceil((REFRESH_COOLDOWN - timeElapsed) / 1000);
+                btn.disabled = true;
+                btn.querySelector('.text').textContent = `Wait ${remainingTime}s`;
+                
+                let timeLeft = remainingTime;
+                const countdownInterval = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft <= 0) {
+                        clearInterval(countdownInterval);
+                        btn.disabled = false;
+                        btn.querySelector('.text').textContent = 'Refresh';
+                    } else {
+                        btn.querySelector('.text').textContent = `Wait ${timeLeft}s`;
+                    }
+                }, 1000);
+                
+                return;
+            }
+            
+            try {
+                btn.disabled = true;
+                btn.classList.add('loading');
+                lastRefreshTime = now;
+                
+                const apiKey = await getApiKey();
+                if (!apiKey) {
+                    showPopup();
+                    return;
+                }
+                
+                const res = await fetch(`https://constelia.ai/api.php?key=${apiKey}&cmd=getForumPosts&count=15`);
+                const posts = await res.json();
+                
+                if (!Array.isArray(posts)) {
+                    showPopup();
+                    return;
+                }
+                
+                document.getElementById('postsInfo').textContent = `Showing ${posts.length} posts`;
+                displayPosts(posts);
+            } catch (err) {
+                console.error('Error:', err);
+                showPopup();
+            } finally {
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.classList.remove('loading');
+                }, 300);
+            }
+        }
+
+        function displayPosts(posts) {
+            const postsDiv = document.getElementById('posts');
+            if (!posts?.length) {
+                postsDiv.innerHTML = '<div class="post">No posts available</div>';
+                return;
+            }
+            
+            postsDiv.innerHTML = posts.map(post => `
+                <div class="post">
+                    <div class="post-header">
+                        <a href="https://constelia.ai/forums/index.php?threads/${post.thread_id}/post-${post.post_id}" 
+                           class="post-title" target="_blank">${post.title}</a>
+                        <span class="post-author">by ${post.username}</span>
+                    </div>
+                    <div class="elapsed">${post.elapsed} ago</div>
+                    <div class="post-content">${formatPostContent(post.message)}</div>
+                </div>
+            `).join('');
+        }
+
+        function formatPostContent(content) {
+            return content
+                .replace(/\[ATTACH.*?](\d+)\[\/ATTACH\]|\[ATTACH.*?"([\d-]+\.png)".*?\](\d+)\[\/ATTACH\]/gi, 
+                    (match, id1, filename, id2) => {
+                        const attachmentId = id1 || id2;
+                        if (!attachmentId) return match;
+                        
+                        const url = `https://constelia.ai/forums/index.php?attachments/${Date.now()}-png.${attachmentId}/`;
+                        
+                        return `<div class="image-container">
+                            <img 
+                                src="${url}"
+                                onerror="console.error('Failed to load image:', this.src); this.style.display='none';"
+                                loading="lazy"
+                            />
+                        </div>`;
+                    })
+                
+                .replace(/\[ATTACH.*?type="full".*?\](\d+)\[?\/?\]?/gi,
+                    (match, id) => {
+                        if (!id) return match;
+                        const url = `https://constelia.ai/forums/index.php?attachments/${Date.now()}-png.${id}/`;
+                        return `<div class="image-container">
+                            <img 
+                                src="${url}"
+                                loading="lazy"
+                            />
+                        </div>`;
+                    })
+                
+                .replace(/\[USER=(\d+)\]@([^\[]+)\[\/USER\]/g, 
+                    '<a href="https://constelia.ai/forums/index.ai/forums/index.php?members/$2.$1/" class="user-mention" target="_blank">@$2</a>')
+                
+                .replace(/\[TABLE[^\]]*?width="([^"]*)"[^\]]*?\]([\s\S]*?)\[\/TABLE\]/g, '<table class="bb-table" style="width:$1">$2</table>')
+                .replace(/\[td[^\]]*?width="([^"]*)"[^\]]*?\]([\s\S]*?)\[\/td\]/gi, (match, width, content) => {
+                    const w = parseFloat(width).toFixed(2) + '%';
+                    return `<td style="width:${w}">${content}</td>`;
+                })
+                .replace(/\[TR\]([\s\S]*?)\[\/TR\]/gi, '<tr>$1</tr>')
+                .replace(/\[td\]([\s\S]*?)\[\/td\]/gi, '<td>$1</td>')
+                
+                .replace(/\[SIZE=(\d+)\](.*?)\[\/SIZE\]/g, '<span style="font-size:${1}px">$2</span>')
+                .replace(/\[COLOR=([^\]]+)\](.*?)\[\/COLOR\]/g, '<span style="color:$1">$2</span>')
+                .replace(/\[ICODE\](.*?)\[\/ICODE\]/gi, '<code class="inline-code">$1</code>')
+                
+                .replace(/\[QUOTE(?:=.*?)?\].*?\[ATTACH.*?\].*?\[\/ATTACH\].*?\[\/QUOTE\]/gs, '')
+                .replace(/\[QUOTE(?:=.*?)?\]([\s\S]*?)\[\/QUOTE\]/gis, (_, quote) => {
+                    return `<blockquote class="bb-quote">${quote.trim()}</blockquote>`;
+                })
+                
+                .replace(/\[URL\]([^\[]+)\[\/URL\]/gi, '<a href="$1" target="_blank">$1</a>')
+                .replace(/\[URL=([^\]]+)\](.*?)\[\/URL\]/gi, '<a href="$1" target="_blank">$2</a>')
+                
+                .replace(/\[(?:B|STRONG)\](.*?)\[\/(?:B|STRONG)\]/gi, '<strong>$1</strong>')
+                .replace(/\[I\](.*?)\[\/I\]/gi, '<em>$1</em>')
+                .replace(/\[U\](.*?)\[\/U\]/gi, '<u>$1</u>')
+                .replace(/\[CODE(?:=(\w+))?\]([\s\S]*?)\[\/CODE\]/gi, (_, lang, code) => 
+                    `<pre><code class="language-${lang || 'plaintext'}">${code.trim()}</code></pre>`)
+                .replace(/\[IMG(?:\s*size="?(\d+)x(\d+)"?)?\](.*?)\[\/IMG\]/g, (_, w, h, src) =>
+                    `<div class="image-container"><img src="${src}" style="${w ? `width:${w}px;height:${h}px;` : ''}"}</div>`);
+        }
+
+        function startCountdown() {
+            const button = document.querySelector('.popup-button');
+            const countdownDiv = button.querySelector('.countdown');
+            if (button.disabled) return;
+            
+            let count = 5;
+            countdownDiv.textContent = count;
+
+            button.classList.add('counting');
+            button.disabled = true;
+
+            const countdown = setInterval(() => {
+                count--;
+                countdownDiv.textContent = count;
+
+                if (count <= 0) {
+                    clearInterval(countdown);
+                    button.classList.remove('counting');
+                    button.classList.add('refreshing');
+                    checkForKey();
+                }
+            }, 1000);
+        }
+
+        async function checkForKey() {
+            const button = document.querySelector('.popup-button');
+            try {
+                const startTime = Date.now();
+                const key = await getApiKey();
+                
+                const elapsed = Date.now() - startTime;
+                if (elapsed < 1000) {
+                    await new Promise(resolve => setTimeout(resolve, 1000 - elapsed));
+                }
+                
+                if (key) {
+                    closePopup();
+                    fetchPosts();
+                } else {
+                    button.classList.remove('refreshing');
+                    button.classList.remove('counting');
+                    button.disabled = false;
+                }
+            } catch (error) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                button.classList.remove('refreshing');
+                button.classList.remove('counting');
+                button.disabled = false;
+            }
+        }
+
+        async function init() {
+            try {
+                const key = await getApiKey();
+                if (key) {
+                    fetchPosts();
+                } else {
+                    showPopup();
+                }
+            } catch (error) {
+                showPopup();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
