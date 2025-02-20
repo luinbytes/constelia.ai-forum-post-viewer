@@ -7,15 +7,19 @@ A lightweight, single-file HTML viewer for constelia.ai forum posts. View recent
 - 🚀 Real-time post fetching
 - 🎨 Clean, responsive dark theme
 - 🔒 Secure API key management
-- 📝 Full BBCode support including:
-  - Images and attachments
+- 📝 BBCode support including:
+  - Lists
   - Code blocks with syntax highlighting
   - Tables
   - Quotes
   - User mentions
 - ⚡ Rate limiting to prevent API abuse
-- 🖼️ Lazy loading for images
 - 📱 Mobile-friendly design
+
+## Important Notes
+
+- ⚠️ Forum post images and attachments are NOT currently supported due to CORS restrictions
+- Some BBCode formatting may not render exactly as it appears on the forum although I am working on it.
 
 ## Setup
 
@@ -29,8 +33,7 @@ A lightweight, single-file HTML viewer for constelia.ai forum posts. View recent
 - Click the "Refresh" button to fetch the latest 15 forum posts
 - Posts are displayed with their title, author, and elapsed time
 - Click post titles to open them in the main forum
-- Images and attachments are loaded on demand
-- 10-second cooldown between refreshes to prevent API spam
+- 5-second cooldown between refreshes to prevent API spam
 
 ## Development
 
